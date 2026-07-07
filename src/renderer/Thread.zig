@@ -360,16 +360,13 @@ fn drainMailbox(self: *Thread) !void {
                 // Visibility affects our QoS class
                 self.setQosClass();
 
-                // If we became visible then we immediately rebuild cells
-                // (renderCallback skips updateFrame while invisible) and draw.
-                if (v) {
-                    self.renderer.updateFrame(
-                        self.state,
-                        self.flags.cursor_blink_visible,
-                    ) catch |err|
-                        log.warn("error rendering on visibility regain err={}", .{err});
-                    self.drawFrame(false);
-                }
+                // If we became visible we don't need to do anything here:
+                // wakeupCallback always runs renderCallback after the
+                // mailbox is fully drained, and with our visible flag now
+                // set it rebuilds cells and draws. Doing it there instead
+                // of here means it happens after all queued messages
+                // (resize, font_grid, change_config) have been applied,
+                // and avoids doing expensive shaping work mid-drain.
 
                 // Notify the renderer so it can update any state.
                 self.renderer.setVisible(v);
