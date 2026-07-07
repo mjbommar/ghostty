@@ -245,6 +245,23 @@ pub fn add(
             if (b.systemIntegrationOption("fontconfig", .{})) {
                 step.linkSystemLibrary2("fontconfig", dynamic_link_opts);
             } else {
+                // The GTK apprt loads the system libfontconfig.so
+                // transitively through GTK/Pango, so bundling our own
+                // fontconfig puts two copies in one process. The bundled
+                // copy is built with hidden visibility so the two can't
+                // interpose each other (see pkg/fontconfig/build.zig and
+                // https://github.com/ghostty-org/ghostty/issues/10432),
+                // but linking the system fontconfig avoids the duplicate
+                // entirely and is recommended when available.
+                if (self.config.app_runtime == .gtk) {
+                    std.log.info(
+                        "bundling static fontconfig alongside GTK's system " ++
+                            "libfontconfig; consider building with " ++
+                            "-fsys=fontconfig (ghostty#10432)",
+                        .{},
+                    );
+                }
+
                 step.linkLibrary(fontconfig_dep.artifact("fontconfig"));
                 try static_libs.append(
                     b.allocator,

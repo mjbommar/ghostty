@@ -126,6 +126,16 @@ fn buildLib(b: *std.Build, module: *std.Build.Module, options: anytype) !*std.Bu
         // https://gitlab.freedesktop.org/fontconfig/fontconfig/-/merge_requests/231
         "-fno-sanitize=undefined",
         "-fno-sanitize-trap=undefined",
+
+        // Keep our Fc* symbols out of the executable's dynamic symbol
+        // table. When the final binary also loads the system
+        // libfontconfig.so (e.g. transitively through GTK/Pango), any
+        // exported Fc* symbols from this static copy would interpose the
+        // system library's, splitting fontconfig's process-global state
+        // (cache mmaps, refcounts) across two implementations and causing
+        // use-after-free crashes in font matching.
+        // https://github.com/ghostty-org/ghostty/issues/10432
+        "-fvisibility=hidden",
     });
 
     switch (target.result.ptrBitWidth()) {
